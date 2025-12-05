@@ -1,0 +1,357 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>4×6 Kanban Card Generator — Mobile v8.3 (URL Prefill + Online QR)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --slate-800:#1f2937;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#e2e8f0;
+    --gray-400:#9ca3af;--gray-500:#6b7280;--gray-700:#374151;
+  }
+  *{ box-sizing:border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body{ margin:0; background:#f8fafc; color:#1f2937; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
+  header{ padding:12px 16px; border-bottom:1px solid #eef2f7; background:#fff; position:sticky; top:0; z-index:20 }
+  h1{ margin:0; font-size:18px }
+  .wrap{ display:grid; grid-template-columns:420px 1fr; gap:16px; padding:16px }
+  .panel{ background:#fff; border:1px solid #eef2f7; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.04) }
+  .panel .hd{ padding:10px 14px; border-bottom:1px solid #eef2f7; font-weight:700; display:flex; align-items:center; justify-content:space-between }
+  .panel .bd{ padding:14px }
+  label{ display:block; font-size:14px; color:#334155; margin-bottom:10px; font-weight:600 }
+  input[type=text],input[type=url],textarea, select{
+    width:100%; padding:12px 14px; border:1px solid #dbe0e6; border-radius:10px; font-size:16px; outline:none; background:#fff;
+  }
+  textarea{ min-height:70px; resize:vertical }
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+  .btn{ appearance:none; border:1px solid #d0d7e2; background:#0ea5e9; color:#fff; padding:10px 12px; border-radius:10px; font-weight:700; cursor:pointer; font-size:16px }
+  .btn.secondary{ background:#fff; color:#0f172a; border-color:#c7ccd7 }
+  .previewWrap{ display:flex; justify-content:center; align-items:flex-start; padding:16px }
+  .card{ width:6in; height:4in; background:#fff; position:relative; overflow:hidden; border:2px solid #e5e7eb }
+  .safe{ position:absolute; inset:0.25in; display:flex; flex-direction:column }
+  .header{ height:0.7in; display:flex; align-items:center; justify-content:space-between; padding:0 0.18in; color:#fff; background:#1E88E5; background-clip:padding-box }
+  .title{ font-size:16pt; font-weight:800; max-width:4.0in; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .logo{ height:0.45in; max-width:1.5in; object-fit:contain; margin-left:0.1in; background:#fff; border-radius:4px; display:none }
+  .content{ display:grid; grid-template-columns:2.65in 2.35in; gap:0.14in; padding:0.12in 0.12in 0 0.12in; flex:1 }
+  .leftCol{ display:flex; flex-direction:column }
+  .photoBox{ width:100%; height:2.55in; border:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; background:#fafafa }
+  .photoBox img{ max-width:100%; max-height:100%; object-fit:contain; display:none }
+  .genDateUnder{ margin-top:0.06in; font-size:10pt; color:#6b7280; text-align:right }
+  .rightCol{ display:grid; grid-template-rows:auto auto auto; row-gap:0.08in; min-height:0 }
+  .fields{ font-size:10pt; line-height:1.2 }
+  .field{ margin-bottom:0.06in }
+  .label{ font-weight:800; color:#374151 }
+  .rowflex{ display:flex; gap:0.22in; flex-wrap:wrap }
+  .notesTitle{ font-weight:800; color:#374151; margin-bottom:0.04in }
+  .notes{ font-size:9.3pt; color:#374151; border:1px solid #e5e7eb; padding:6px; height:0.6in; overflow:hidden; white-space:pre-wrap }
+  .qrRow{ display:grid; grid-template-columns:1fr 1fr; gap:0.1in; align-items:start }
+  .qrStack{ display:flex; flex-direction:column; align-items:center; gap:0.06in }
+  .qrBox{ width:1.0in; height:1.0in; border:1px dashed #9ca3af; display:flex; align-items:center; justify-content:center; background:#fff }
+  .qrBox img{ width:0.95in; height:0.95in; object-fit:contain; display:none }
+  .qrCaptionUnder{ font-size:8pt; color:#6b7280; text-align:center; }
+  @media (max-width: 900px){
+    .wrap{ grid-template-columns:1fr; padding:12px }
+    .panel{ margin-bottom:12px }
+  }
+  @media print{
+    header, .formPanel, .panel .hd .actions{ display:none !important }
+    .wrap{ display:block; padding:0; margin:0 }
+    .previewWrap{ padding:0; margin:0; display:flex; align-items:center; justify-content:center }
+    .card{ width:6in; height:4in; border:2px solid #e5e7eb; page-break-inside: avoid; box-shadow:none }
+  }
+</style>
+</head>
+
+<body>
+<header>
+  <h1>4×6 Kanban Card Generator</h1>
+  <div class="muted">Single photo input + dual online QR codes. Prefills only when opened from a Notion URL.</div>
+</header>
+
+<div class="wrap">
+  <!-- Form -->
+  <div class="panel formPanel">
+    <div class="hd">
+      <span>Inputs</span>
+    </div>
+    <div class="bd">
+
+      <label>Item name
+        <input id="itemName" type="text">
+      </label>
+
+      <label>Photo (camera or library)
+        <input id="photoFile" type="file" accept="image/*">
+      </label>
+
+      <label>OR Photo URL
+        <input id="itemPhotoUrl" type="url">
+      </label>
+
+      <label>Supplier name
+        <input id="supplierName" type="text">
+      </label>
+
+      <label>Item number
+        <input id="itemNumber" type="text">
+      </label>
+
+      <div class="row">
+        <label>Reorder at qty
+          <input id="reorderAtQty" type="text">
+        </label>
+        <label>Reorder qty
+          <input id="reorderQty" type="text">
+        </label>
+      </div>
+
+      <label>Inventory location
+        <input id="locationText" type="text">
+      </label>
+
+      <div class="row">
+        <label>Rack
+          <input id="rackID" type="text">
+        </label>
+        <label>Shelf
+          <input id="shelfID" type="text">
+        </label>
+      </div>
+
+      <label>Notes
+        <textarea id="notesText"></textarea>
+      </label>
+
+      <label>Header color
+        <select id="headerColorSelect">
+          <option value="#E53935">Red</option>
+          <option value="#FB8C00">Orange</option>
+          <option value="#FDD835">Yellow</option>
+          <option value="#43A047">Green</option>
+          <option value="#00897B">Teal</option>
+          <option value="#1E88E5" selected>Blue</option>
+          <option value="#8E24AA">Purple</option>
+          <option value="#546E7A">Gray</option>
+        </select>
+      </label>
+
+      <hr style="margin:18px 0; border:none; border-top:1px solid #e5e7eb">
+
+      <label>Product link (left QR)
+        <input id="itemWebLink" type="url">
+      </label>
+
+      <label>Notion / system link (right QR)
+        <input id="notionUrl" type="url">
+      </label>
+
+      <button class="btn secondary" id="printBtn" type="button" style="margin-top:16px;">Print</button>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="panel previewPanel">
+    <div class="hd">Preview</div>
+    <div class="bd previewWrap">
+
+      <div class="card">
+        <div class="safe">
+
+          <div class="header" id="header">
+            <div class="title" id="title">Item Name</div>
+            <img id="logo" class="logo" alt="Logo">
+          </div>
+
+          <div class="content">
+
+            <div class="leftCol">
+              <div class="photoBox">
+                <img id="photo" alt="Item photo">
+                <span id="photoPlaceholder" style="color:#9ca3af;">No photo</span>
+              </div>
+              <div class="genDateUnder" id="genDate"></div>
+            </div>
+
+            <div class="rightCol">
+              <div class="fields">
+                <div class="field"><span class="label">Supplier:</span> <span id="supplierOut">-</span></div>
+                <div class="field"><span class="label">Item #:</span> <span id="itemNoOut">-</span></div>
+                <div class="rowflex">
+                  <div class="field"><span class="label">Reorder at:</span> <span id="reorderAtOut">-</span></div>
+                  <div class="field"><span class="label">Reorder qty:</span> <span id="reorderQtyOut">-</span></div>
+                </div>
+                <div class="field">
+                  <span class="label">Location:</span> <span id="locOut">-</span>
+                  <span id="rackOut"></span>
+                  <span id="shelfOut"></span>
+                </div>
+              </div>
+
+              <div>
+                <div class="notesTitle">Notes</div>
+                <div class="notes" id="notesOut"></div>
+              </div>
+
+              <div class="qrRow">
+                <div class="qrStack">
+                  <div class="qrBox"><img id="qrImg" alt="QR: item page"></div>
+                  <div class="qrCaptionUnder">Scan for item page</div>
+                </div>
+                <div class="qrStack">
+                  <div class="qrBox"><img id="qrNotionImg" alt="QR: Notion / system"></div>
+                  <div class="qrCaptionUnder">Scan for Notion / system</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* Read URL search parameters */
+function getParams(){
+  return new URLSearchParams(window.location.search);
+}
+
+/* Header color handler */
+function updateHeaderColor(){
+  const sel = $('headerColorSelect');
+  if (sel && sel.value){
+    $('header').style.background = sel.value;
+  }
+}
+
+/* Online QR generation using QRServer */
+function makeQR(imgEl, url){
+  if (!imgEl) return;
+  if (!url || !url.trim()){
+    imgEl.style.display = 'none';
+    imgEl.removeAttribute('src');
+    return;
+  }
+  imgEl.src = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" + encodeURIComponent(url.trim());
+  imgEl.style.display = 'block';
+}
+
+/* Populate preview from form values */
+function generate(){
+  const name         = $('itemName').value.trim();
+  const supplierName = $('supplierName').value.trim();
+  const itemNumber   = $('itemNumber').value.trim();
+  const reorderAtQty = $('reorderAtQty').value.trim();
+  const reorderQty   = $('reorderQty').value.trim();
+  const locationText = $('locationText').value.trim();
+  const rackID       = $('rackID').value.trim();
+  const shelfID      = $('shelfID').value.trim();
+  const notesText    = $('notesText').value.trim();
+
+  $('title').textContent        = name || 'Item Name';
+  $('supplierOut').textContent  = supplierName || '-';
+  $('itemNoOut').textContent    = itemNumber || '-';
+  $('reorderAtOut').textContent = reorderAtQty || '-';
+  $('reorderQtyOut').textContent= reorderQty || '-';
+  $('locOut').textContent       = locationText || '-';
+  $('rackOut').textContent      = rackID ? (' | Rack: ' + rackID) : '';
+  $('shelfOut').textContent     = shelfID ? (' | Shelf: ' + shelfID) : '';
+  $('notesOut').textContent     = notesText || '';
+  $('genDate').textContent      = name ? ('Generated: ' + new Date().toLocaleDateString()) : '';
+
+  // Photo handling
+  const file        = $('photoFile').files[0];
+  const img         = $('photo');
+  const placeholder = $('photoPlaceholder');
+
+  img.style.display = 'none';
+  placeholder.style.display = 'inline';
+
+  if (file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.src = reader.result;
+      img.style.display = 'block';
+      placeholder.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    const url = $('itemPhotoUrl').value.trim();
+    if (url){
+      const pre = new Image();
+      pre.onload = () => {
+        img.src = url;
+        img.style.display = 'block';
+        placeholder.style.display = 'none';
+      };
+      pre.src = url;
+    }
+  }
+
+  // Logo (if you ever want it shown, plug in your logo URL here)
+  const logoImg = $('logo');
+  logoImg.style.display = 'none'; // currently hidden by default
+}
+
+/* Wire up events and apply URL-based prefill */
+(function init(){
+  const params = getParams();
+
+  // Apply URL params ONLY if they exist (blank otherwise)
+  if (params.has('itemName'))     $('itemName').value       = params.get('itemName');
+  if (params.has('supplierName')) $('supplierName').value   = params.get('supplierName');
+  if (params.has('itemNumber'))   $('itemNumber').value     = params.get('itemNumber');
+  if (params.has('reorderAt'))    $('reorderAtQty').value   = params.get('reorderAt');
+  if (params.has('reorderQty'))   $('reorderQty').value     = params.get('reorderQty');
+  if (params.has('location'))     $('locationText').value   = params.get('location');
+  if (params.has('rack'))         $('rackID').value         = params.get('rack');
+  if (params.has('shelf'))        $('shelfID').value        = params.get('shelf');
+  if (params.has('notes'))        $('notesText').value      = params.get('notes');
+  if (params.has('photoUrl'))     $('itemPhotoUrl').value   = params.get('photoUrl');
+  if (params.has('productUrl'))   $('itemWebLink').value    = params.get('productUrl');
+  if (params.has('notionUrl'))    $('notionUrl').value      = params.get('notionUrl');
+  if (params.has('headerColor'))  $('headerColorSelect').value = params.get('headerColor');
+
+  const ids = [
+    "itemName","itemPhotoUrl","supplierName","itemNumber","reorderAtQty",
+    "reorderQty","locationText","rackID","shelfID","notesText",
+    "itemWebLink","notionUrl"
+  ];
+
+  ids.forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      generate();
+      makeQR($('qrImg'),       $('itemWebLink').value);
+      makeQR($('qrNotionImg'), $('notionUrl').value);
+    });
+  });
+
+  $('photoFile').addEventListener('change', () => {
+    generate();
+  });
+
+  $('headerColorSelect').addEventListener('change', () => {
+    updateHeaderColor();
+  });
+
+  $('printBtn').addEventListener('click', () => {
+    window.print();
+  });
+
+  // Initial render: respect URL params (if any), otherwise all blank
+  updateHeaderColor();
+  generate();
+  makeQR($('qrImg'),       $('itemWebLink').value);
+  makeQR($('qrNotionImg'), $('notionUrl').value);
+})();
+</script>
+
+</body>
+</html>
